@@ -22,3 +22,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define MOUSEKEY_TIME_TO_MAX 100
 
+#define TAPPING_TOGGLE 3	// 3 times to toggle
