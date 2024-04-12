@@ -7,8 +7,25 @@
 #define LAYER_CURSORS 1
 #define LAYER_MOUSE 2
 
-#define LT1(key) LT(1,key)
-#define LT2(key) LT(2, key)
+#define IS_MAC
+
+#ifdef IS_MAC
+#	define PL_LGUI	KC_LALT		// on Mac ALT = CMD
+#   define PL_RGUI  KC_RALT
+#	define PL_LALT	KC_LGUI		// on Mac CMD = ALT
+#   define PL_RALT  KC_RGUI
+#	define PL_HOME	LGUI(KC_LEFT)
+#	define PL_END	LGUI(KC_RGHT)
+#else
+#	define PL_LGUI	KC_LGUI
+#	define PL_LALT	KC_LALT
+#	define PL_HOME	KC_HOME
+#	define PL_END	KC_END
+#endif
+
+// Momentary layer switch
+#define LTC(key) LT(LAYER_CURSORS, key)
+#define LT2(key) LT(LAYER_MOUSE, key)
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -18,12 +35,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
 	KC_TAB,	KC_Q,	KC_W,	KC_E,	KC_R,	KC_T,									KC_Y,	KC_U,	KC_I,	KC_O,	KC_P,	LT2(KC_EQL),
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_LCTL,KC_A,	KC_S,	KC_D,	KC_F,	KC_G,									KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LT1(KC_QUOT),
+	KC_LCTL,KC_A,	KC_S,	KC_D,	KC_F,	KC_G,									KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LTC(KC_QUOT),
 // ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
 	KC_LSFT,KC_Z,	KC_X,	KC_C,	KC_V,	KC_B,	LT2(KC_GRV),		KC_BSLS,	KC_N,	KC_M,	KC_COMM,KC_DOT,	KC_SLSH,KC_RSFT,
 // └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
 //				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
-					KC_LGUI,		LT1(KC_SPC),	KC_LALT,			KC_BSPC,		KC_ENT,			KC_RCTL
+					PL_LGUI,		LTC(KC_SPC),	PL_LALT,			KC_BSPC,		KC_ENT,			PL_RALT
 //				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
 	),
 
@@ -31,14 +48,14 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
 	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,KC_HOME,KC_UP,	KC_END,	_______,								_______,_______,_______,_______,_______,KC_F12,
+	_______,_______,PL_HOME,KC_UP,	PL_END,	_______,								_______,_______,_______,_______,_______,KC_F12,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,_______,_______,_______,_______,
+	_______,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,KC_LGUI,_______,_______,_______,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,KC_LALT,_______,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,_______,
+	_______,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,_______,
 // └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
 //				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
-					_______,		_______,		KC_LALT,			KC_BSPC,		KC_LBRC,		KC_RBRC
+					_______,		_______,		PL_LALT,			KC_BSPC,		KC_LBRC,		KC_RBRC
 //				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
 	),
 
@@ -107,7 +124,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 				case KC_COMM: case KC_DOT: case KC_SLSH: case KC_MINS:
 				case KC_BSLS: case KC_GRV: case KC_EQL: case KC_QUOT:
 				case KC_LBRC: case KC_RBRC: case KC_SCLN:
-				case LT1(KC_QUOT): case LT2(KC_EQL): case LT2(KC_GRV):
+				case LTC(KC_QUOT): case LT2(KC_EQL): case LT2(KC_GRV):
 					rgb_matrix_set_color(index, RGB_DARK_BLUE);
 					break;
 
@@ -120,7 +137,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 					rgb_matrix_set_color(index, RGB_DARK_PURPLE);
 					break;
 
-				case KC_SPC: case LT1(KC_SPC):
+				case KC_SPC: case LTC(KC_SPC):
 					rgb_matrix_set_color(index, RGB_BLUE);
 					break;
 
