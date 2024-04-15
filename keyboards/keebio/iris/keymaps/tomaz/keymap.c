@@ -3,59 +3,172 @@
 
 #include QMK_KEYBOARD_H
 
-#define LAYER_QWERTY 0
-#define LAYER_CURSORS 1
-#define LAYER_MOUSE 2
+enum {
+	LAYER_QWERTY,
+	LAYER_QWERTY_MAC,
+	LAYER_CURSORS,
+	LAYER_CURSORS_MAC,
+	LAYER_MOUSE,
+	LAYER_MOUSE_MAC
+};
+
+// Shortcuts for various platform-specific key combos
+#define PL_HOME	LGUI(KC_LEFT)
+#define PL_END	LGUI(KC_RIGHT)
 
 // Momentary layer switch
-#define LTC(key) LT(LAYER_CURSORS, key)
-#define LT2(key) LT(LAYER_MOUSE, key)
+#define LTCW(key) LT(LAYER_CURSORS, key)
+#define LTCM(key) LT(LAYER_CURSORS_MAC, key)
+#define LTMW(key) LT(LAYER_MOUSE, key)
+#define LTMM(key) LT(LAYER_MOUSE_MAC, key)
 
-// Layer tapping toggle
-#define TTC(key) TT(LAYER_CURSORS, key)
-#define TTM(key) TT(LAYER_MOUSE, key)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Tap dance adopted from https://github.com/qmk/qmk_firmware/blob/9baafef968ea4b1439ed9cb58479e66eec1f80d7/docs/feature_tap_dance.md
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum {
+	TD_TAB_BOOT,
+	TD_RSFT_BOOT,
+	TD_LSFT_MAC_TOGGLE,
+};
+
+void td_mac_win_layer_toggle(tap_dance_state_t *state, void *user_data) {
+	switch (state->count) {
+		case 1: {
+			register_code(KC_LSFT);
+			break;
+		}
+		case 2: {
+			if (layer_state_is(LAYER_MOUSE)) {
+				set_single_persistent_default_layer(LAYER_QWERTY_MAC);
+			} else {
+				set_single_persistent_default_layer(LAYER_QWERTY);
+			}
+			break;
+		}
+		default: {
+			break;
+		}
+	}
+}
+
+// Associate our tap dance key with its functionality
+tap_dance_action_t tap_dance_actions[] = {
+	[TD_TAB_BOOT] = ACTION_TAP_DANCE_DOUBLE(KC_TAB, QK_BOOT),
+	[TD_RSFT_BOOT] = ACTION_TAP_DANCE_DOUBLE(KC_RSFT, QK_BOOT),
+	[TD_LSFT_MAC_TOGGLE] = ACTION_TAP_DANCE_FN(td_mac_win_layer_toggle)
+};
+
+#define TD_TBBT		TD(TD_TAB_BOOT)
+#define TD_RSBT		TD(TD_RSFT_BOOT)
+#define TD_LSTO		TD(TD_LSFT_MAC_TOGGLE)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Tap dance end
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
+//-------------------------------------------------------------------------------------------------------------------------------------------
+// DEFAULT LAYER
+//-------------------------------------------------------------------------------------------------------------------------------------------
+
 	[LAYER_QWERTY] = LAYOUT(
+// ALT and GUI keys are reversed here on Mac so that we maintain closer feel to Windows
 // ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
 	KC_ESC,	KC_1,	KC_2,	KC_3,	KC_4,	KC_5,									KC_6,	KC_7,	KC_8,	KC_9,	KC_0,	KC_MINS,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_TAB,	KC_Q,	KC_W,	KC_E,	KC_R,	KC_T,									KC_Y,	KC_U,	KC_I,	KC_O,	KC_P,	LT2(KC_EQL),
+	KC_TAB,	KC_Q,	KC_W,	KC_E,	KC_R,	KC_T,									KC_Y,	KC_U,	KC_I,	KC_O,	KC_P,	LTMW(KC_EQL),
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_LCTL,KC_A,	KC_S,	KC_D,	KC_F,	KC_G,									KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LTC(KC_QUOT),
+	KC_LCTL,KC_A,	KC_S,	KC_D,	KC_F,	KC_G,									KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LTCW(KC_QUOT),
 // ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_LSFT,KC_Z,	KC_X,	KC_C,	KC_V,	KC_B,	LT2(KC_GRV),		KC_BSLS,	KC_N,	KC_M,	KC_COMM,KC_DOT,	KC_SLSH,KC_RSFT,
+	KC_LSFT,KC_Z,	KC_X,	KC_C,	KC_V,	KC_B,	LTMW(KC_GRV),		KC_BSLS,	KC_N,	KC_M,	KC_COMM,KC_DOT,	KC_SLSH,KC_RSFT,
 // └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
 //				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
-					KC_LGUI,		LTC(KC_SPC),	KC_LALT,			KC_BSPC,		KC_ENT,			KC_RCTL
+					KC_LGUI,		LTCW(KC_SPC),	KC_LALT,			KC_BSPC,		KC_ENT,			KC_RCTL
 //				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
 	),
 
+	[LAYER_QWERTY_MAC] = LAYOUT(
+// ALT and GUI keys are reversed here on Mac so that we maintain closer feel to Windows
+// ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
+	KC_ESC,	KC_1,	KC_2,	KC_3,	KC_4,	KC_5,									KC_6,	KC_7,	KC_8,	KC_9,	KC_0,	KC_MINS,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
+	KC_TAB,	KC_Q,	KC_W,	KC_E,	KC_R,	KC_T,									KC_Y,	KC_U,	KC_I,	KC_O,	KC_P,	LTMM(KC_EQL),
+// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
+	KC_LCTL,KC_A,	KC_S,	KC_D,	KC_F,	KC_G,									KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LTCM(KC_QUOT),
+// ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
+	KC_LSFT,KC_Z,	KC_X,	KC_C,	KC_V,	KC_B,	LTMM(KC_GRV),		KC_BSLS,	KC_N,	KC_M,	KC_COMM,KC_DOT,	KC_SLSH,KC_RSFT,
+// └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
+//				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
+					KC_LALT,		LTCM(KC_SPC),	KC_LGUI,			KC_BSPC,		KC_ENT,			KC_RCTL
+//				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
+	),
+
+//-------------------------------------------------------------------------------------------------------------------------------------------
+// CURSORS LAYER
+//-------------------------------------------------------------------------------------------------------------------------------------------
+
 	[LAYER_CURSORS] = LAYOUT(
+// ALT and GUI keys are always the same here since we always want them in the same position on all platforms
 // ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
 	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
 	_______,_______,KC_HOME,KC_UP,	KC_END,	_______,								_______,_______,_______,_______,_______,KC_F12,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,_______,_______,_______,_______,
+	KC_LCTL,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,KC_LGUI,_______,_______,_______,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,_______,
+	KC_LSFT,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,_______,
 // └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
 //				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
 					_______,		_______,		KC_LALT,			KC_BSPC,		KC_LBRC,		KC_RBRC
 //				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
 	),
 
+	[LAYER_CURSORS_MAC] = LAYOUT(
+// ALT and GUI keys are always the same here since we always want them in the same position on all platforms
+// ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
+	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
+	_______,_______,PL_HOME,KC_UP,	PL_END,	_______,								_______,_______,_______,_______,_______,KC_F12,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
+	KC_LCTL,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,KC_LGUI,_______,_______,_______,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
+	KC_LSFT,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,_______,
+// └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
+//				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
+					_______,		_______,		KC_LALT,			KC_BSPC,		KC_LBRC,		KC_RBRC
+//				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
+	),
+
+//-------------------------------------------------------------------------------------------------------------------------------------------
+// MOUSE LAYER
+//-------------------------------------------------------------------------------------------------------------------------------------------
+
 	[LAYER_MOUSE] = LAYOUT(
 // ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
 	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	QK_BOOT,_______,KC_BTN1,KC_MS_U,KC_BTN2,_______,								_______,KC_P7,	KC_P8,	KC_P9,	_______,KC_F12,
+	TD_TBBT,_______,KC_BTN1,KC_MS_U,KC_BTN2,_______,								_______,KC_P7,	KC_P8,	KC_P9,	_______,KC_F12,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
 	_______,RGB_VAI,KC_MS_L,KC_MS_D,KC_MS_R,KC_WH_U,								KC_VOLU,KC_P4,	KC_P5,	KC_P6,	_______,_______,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,_______,_______,_______,KC_WH_D,KC_INS,				KC_DEL,		KC_VOLD,KC_P1,	KC_P2,	KC_P3,	_______,QK_BOOT,
+	TD_LSTO,_______,_______,_______,_______,KC_WH_D,KC_INS,				KC_DEL,		KC_VOLD,KC_P1,	KC_P2,	KC_P3,	_______,TD_RSBT,
+// └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
+//				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
+					_______,		_______,		_______,			KC_BSPC,		KC_P0,			 _______
+//				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
+	),
+
+	[LAYER_MOUSE_MAC] = LAYOUT(
+// ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
+	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
+	TD_TBBT,_______,KC_BTN1,KC_MS_U,KC_BTN2,_______,								_______,KC_P7,	KC_P8,	KC_P9,	_______,KC_F12,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
+	_______,RGB_VAI,KC_MS_L,KC_MS_D,KC_MS_R,KC_WH_U,								KC_VOLU,KC_P4,	KC_P5,	KC_P6,	_______,_______,
+// ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
+	TD_LSTO,_______,_______,_______,_______,KC_WH_D,KC_INS,				KC_DEL,		KC_VOLD,KC_P1,	KC_P2,	KC_P3,	_______,TD_RSBT,
 // └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
 //				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
 					_______,		_______,		_______,			KC_BSPC,		KC_P0,			 _______
@@ -112,7 +225,8 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 				case KC_COMM: case KC_DOT: case KC_SLSH: case KC_MINS:
 				case KC_BSLS: case KC_GRV: case KC_EQL: case KC_QUOT:
 				case KC_LBRC: case KC_RBRC: case KC_SCLN:
-				case LTC(KC_QUOT): case LT2(KC_EQL): case LT2(KC_GRV):
+				case LTCW(KC_QUOT): case LTMW(KC_EQL): case LTMW(KC_GRV):
+				case LTCM(KC_QUOT): case LTMM(KC_EQL): case LTMM(KC_GRV):
 					rgb_matrix_set_color(index, RGB_DARK_BLUE);
 					break;
 
@@ -125,7 +239,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 					rgb_matrix_set_color(index, RGB_DARK_PURPLE);
 					break;
 
-				case KC_SPC: case LTC(KC_SPC):
+				case KC_SPC: case LTCW(KC_SPC):
 					rgb_matrix_set_color(index, RGB_BLUE);
 					break;
 
@@ -140,6 +254,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 					break;
 
 				case KC_HOME: case KC_END: case KC_PGUP: case KC_PGDN:
+				case PL_HOME: case PL_END:
 					rgb_matrix_set_color(index, RGB_SPRINGGREEN);
 					break;
 
@@ -159,7 +274,9 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 					rgb_matrix_set_color(index, RGB_YELLOW);
 					break;
 
-				case QK_BOOT:
+				case TD_TBBT:
+				case TD_RSBT:
+				case TD_LSTO:
 					rgb_matrix_set_color(index, RGB_MAGENTA);
 					break;
 
@@ -186,53 +303,3 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
 	return false;
 }
-
-/*
-#if defined(ENCODER_ENABLE) && defined(ENCODER_MAP_ENABLE)
-const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
-
-};
-#endif
-*/
-
-/*
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-  switch (keycode) {
-	case QWERTY:
-	  if (record->event.pressed) {
-		set_single_persistent_default_layer(LAYER_QUERTY);
-	  }
-	  return false;
-	  break;
-	case LOWER:
-	  if (record->event.pressed) {
-		layer_on(_LOWER);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  } else {
-		layer_off(_LOWER);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  }
-	  return false;
-	  break;
-	case RAISE:
-	  if (record->event.pressed) {
-		layer_on(_RAISE);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  } else {
-		layer_off(_RAISE);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  }
-	  return false;
-	  break;
-	case ADJUST:
-	  if (record->event.pressed) {
-		layer_on(_ADJUST);
-	  } else {
-		layer_off(_ADJUST);
-	  }
-	  return false;
-	  break;
-  }
-  return true;
-}
-*/
