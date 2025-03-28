@@ -21,5 +21,3 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SPLIT_LED_STATE_ENABLE
 
 #define MOUSEKEY_TIME_TO_MAX 100
-
-#define TAPPING_TOGGLE 3	// 3 times to toggle

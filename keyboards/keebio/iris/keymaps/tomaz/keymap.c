@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include QMK_KEYBOARD_H
+#include "keymap_extras/keymap_slovenian.h"
 
 #define LAYER_QWERTY 0
 #define LAYER_CURSORS 1
@@ -23,6 +24,96 @@
 #	define PL_END	KC_END
 #endif
 
+// TAP DANCE BEGIN
+
+// https://docs.qmk.fm/features/tap_danc
+
+#define TDC TD(TD_C
+#define TDS TD(TD_S)
+#define TDZ TD(TD_Z)
+
+enum {
+	TD_C,
+	TD_S,
+	TD_Z
+};
+
+typedef struct {
+	uint16_t tap;
+	uint16_t hold;
+	uint16_t held;
+} tap_dance_tap_hold_t;
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record);
+void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data);
+void tap_dance_tap_hold_reset(tap_dance_state_t *state, void *user_data);
+
+#define ACTION_TAP_DANCE_TAP_HOLD(tap, hold)                                        \
+	{                                                                               \
+		.fn        = {NULL, tap_dance_tap_hold_finished, tap_dance_tap_hold_reset}, \
+		.user_data = (void *)&((tap_dance_tap_hold_t){tap, hold, 0}),               \
+	}
+
+tap_dance_action_t tap_dance_actions[] = {
+	[TD_C] = ACTION_TAP_DANCE_TAP_HOLD(KC_C, KC_D),
+	[TD_S] = ACTION_TAP_DANCE_TAP_HOLD(KC_S, KC_F),
+	[TD_Z] = ACTION_TAP_DANCE_TAP_HOLD(KC_Z, KC_G),
+};
+
+// Simpler variant for double taps; doesn't require any of the functions below
+// tap_dance_action_t tap_dance_actions[] = {
+// 	[TD_C] = ACTION_TAP_DANCE_DOUBLE(KC_C, SI_CCAR),
+// 	[TD_S] = ACTION_TAP_DANCE_DOUBLE(KC_S, SI_SCAR),
+// 	[TD_Z] = ACTION_TAP_DANCE_DOUBLE(KC_Z, SI_ZCAR)
+// };
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+	tap_dance_action_t *action;
+
+	switch (keycode) {
+		case TD(TD_C):
+		case TD(TD_S):
+		case TD(TD_Z):
+			action = &tap_dance_actions[QK_TAP_DANCE_GET_INDEX(keycode)];
+			if (!record->event.pressed && action->state.count && !action->state.finished) {
+				tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)action->user_data;
+				tap_code16(tap_hold->tap);
+			}
+			break;
+	}
+
+	return true;
+}
+
+void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data) {
+	tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)user_data;
+
+	if (state->pressed) {
+		if (state->count == 1
+#ifndef PERMISSIVE_HOLD
+			&& !state->interrupted
+#endif
+		) {
+			register_code16(tap_hold->hold);
+			tap_hold->held = tap_hold->hold;
+		} else {
+			register_code16(tap_hold->tap);
+			tap_hold->held = tap_hold->tap;
+		}
+	}
+}
+
+void tap_dance_tap_hold_reset(tap_dance_state_t *state, void *user_data) {
+	tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)user_data;
+
+	if (tap_hold->held) {
+		unregister_code16(tap_hold->held);
+		tap_hold->held = 0;
+	}
+}
+
+// TAP DANCE END
+
 // Momentary layer switch
 #define LTC(key) LT(LAYER_CURSORS, key)
 #define LT2(key) LT(LAYER_MOUSE, key)
@@ -30,48 +121,27 @@
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 	[LAYER_QWERTY] = LAYOUT(
-// ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
-	KC_ESC,	KC_1,	KC_2,	KC_3,	KC_4,	KC_5,									KC_6,	KC_7,	KC_8,	KC_9,	KC_0,	KC_MINS,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_TAB,	KC_Q,	KC_W,	KC_E,	KC_R,	KC_T,									KC_Y,	KC_U,	KC_I,	KC_O,	KC_P,	LT2(KC_EQL),
-// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_LCTL,KC_A,	KC_S,	KC_D,	KC_F,	KC_G,									KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LTC(KC_QUOT),
-// ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	KC_LSFT,KC_Z,	KC_X,	KC_C,	KC_V,	KC_B,	LT2(KC_GRV),		KC_BSLS,	KC_N,	KC_M,	KC_COMM,KC_DOT,	KC_SLSH,KC_RSFT,
-// └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
-//				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
-					PL_LGUI,		LTC(KC_SPC),	PL_LALT,			KC_BSPC,		KC_ENT,			PL_RALT
-//				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
+		KC_ESC,	KC_1,	KC_2,	KC_3,	KC_4,	KC_5,						    	KC_6,	KC_7,	KC_8,	KC_9,	KC_0,	KC_MINS,
+		KC_TAB,	KC_Q,	KC_W,	KC_E,	KC_R,	KC_T,							    KC_Y,	KC_U,	KC_I,	KC_O,	KC_P,	LT2(KC_EQL),
+		KC_LCTL,KC_A,	TDS,    KC_D,	KC_F,	KC_G,							    KC_H,	KC_J,	KC_K,	KC_L,	KC_SCLN,LTC(KC_QUOT),
+		KC_LSFT,TDZ,    KC_X,	TDC,   KC_V,	KC_B,	LT2(KC_GRV),	KC_BSLS,    KC_N,	KC_M,	KC_COMM,KC_DOT,	KC_SLSH,KC_RSFT,
+								PL_LGUI,LTC(KC_SPC),	PL_LALT,		KC_BSPC,    KC_ENT,	PL_RALT
 	),
 
 	[LAYER_CURSORS] = LAYOUT(
-// ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
-	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,KC_HOME,PL_HOME,KC_UP,	PL_END,	KC_END ,								_______,_______,_______,_______,_______,KC_F12,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,KC_LGUI,_______,_______,_______,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,KC_BRK,
-// └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
-//				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
-					_______,		_______,		PL_LALT,			KC_BSPC,		KC_LBRC,		KC_RBRC
-//				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
+		_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,							    KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
+		_______,KC_HOME,PL_HOME,KC_UP,	PL_END,	KC_END,							    _______,_______,_______,_______,_______,KC_F12,
+		_______,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,						    KC_LCTL,KC_LALT,KC_LGUI,_______,_______,_______,
+		_______,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,			KC_DEL,	    KC_SPC,	KC_ENT,	_______,_______,_______,KC_BRK,
+								_______,_______,		PL_LALT,		KC_BSPC,    KC_LBRC,	KC_RBRC
 	),
 
 	[LAYER_MOUSE] = LAYOUT(
-// ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
-	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	QK_BOOT,_______,KC_BTN1,KC_MS_U,KC_BTN2,_______,								_______,KC_P7,	KC_P8,	KC_P9,	_______,KC_F12,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,RGB_VAI,KC_MS_L,KC_MS_D,KC_MS_R,KC_WH_U,								KC_VOLU,KC_P4,	KC_P5,	KC_P6,	_______,_______,
-// ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,_______,_______,_______,KC_WH_D,KC_INS,				KC_DEL,		KC_VOLD,KC_P1,	KC_P2,	KC_P3,	_______,QK_BOOT,
-// └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
-//				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
-					_______,		_______,		_______,			KC_BSPC,		KC_P0,			 _______
-//				   └───────────────┴───────────────┴───────────────┘   └───────────────┴───────────────┴───────────────┘
+		_______,KC_F1,  KC_F2,  KC_F3,  KC_F4,  KC_F5,                              KC_F6,  KC_F7,  KC_F8,  KC_F9,  KC_F10, KC_F11,
+		QK_BOOT,_______,KC_BTN1,KC_MS_U,KC_BTN2,_______,                            _______,KC_P7,  KC_P8,  KC_P9,  _______,KC_F12,
+		_______,RGB_VAI,KC_MS_L,KC_MS_D,KC_MS_R,KC_WH_U,                            KC_VOLU,KC_P4,  KC_P5,  KC_P6,  _______,_______,
+		_______,_______,_______,_______,_______,KC_WH_D,KC_INS,         KC_DEL,     KC_VOLD,KC_P1,  KC_P2,  KC_P3,  _______,QK_BOOT,
+								_______,_______,        _______,        KC_BSPC,    KC_P0,_______
 	)
 };
 
@@ -118,6 +188,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 				case KC_A: case KC_B: case KC_C: case KC_D: case KC_E: case KC_F: case KC_G: case KC_H: case KC_I: case KC_J:
 				case KC_K: case KC_L: case KC_M: case KC_N: case KC_O: case KC_P: case KC_Q: case KC_R: case KC_S: case KC_T:
 				case KC_U: case KC_V: case KC_W: case KC_X: case KC_Y: case KC_Z:
+				case TDC: case TDS: case TDZ:
 					rgb_matrix_set_color(index, RGB_RED);
 					break;
 
@@ -128,9 +199,9 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 					rgb_matrix_set_color(index, RGB_DARK_BLUE);
 					break;
 
-                case KC_INS: case KC_BRK:
-                    rgb_matrix_set_color(index, RGB_RED);
-                    break;
+				case KC_INS: case KC_BRK:
+					rgb_matrix_set_color(index, RGB_RED);
+					break;
 
 				case KC_DEL: case KC_BSPC:
 					rgb_matrix_set_color(index, RGB_MAGENTA);
