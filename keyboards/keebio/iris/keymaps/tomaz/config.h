@@ -21,3 +21,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SPLIT_LED_STATE_ENABLE
 
 #define MOUSEKEY_TIME_TO_MAX 100
+
+#define UNICODE_SELECTED_MODES UNICODE_MODE_MACOS

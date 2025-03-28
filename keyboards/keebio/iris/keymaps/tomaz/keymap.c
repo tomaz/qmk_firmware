@@ -28,7 +28,7 @@
 
 // https://docs.qmk.fm/features/tap_danc
 
-#define TDC TD(TD_C
+#define TDC TD(TD_C)
 #define TDS TD(TD_S)
 #define TDZ TD(TD_Z)
 
@@ -41,23 +41,21 @@ enum {
 typedef struct {
 	uint16_t tap;
 	uint16_t hold;
-	uint16_t held;
 } tap_dance_tap_hold_t;
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record);
 void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data);
-void tap_dance_tap_hold_reset(tap_dance_state_t *state, void *user_data);
 
-#define ACTION_TAP_DANCE_TAP_HOLD(tap, hold)                                        \
-	{                                                                               \
-		.fn        = {NULL, tap_dance_tap_hold_finished, tap_dance_tap_hold_reset}, \
-		.user_data = (void *)&((tap_dance_tap_hold_t){tap, hold, 0}),               \
+#define ACTION_TAP_DANCE_TAP_HOLD(tap) \
+	{ \
+		.fn        = { NULL, tap_dance_tap_hold_finished, NULL }, \
+		.user_data = (void *)&((tap_dance_tap_hold_t){ tap, tap }), \
 	}
 
 tap_dance_action_t tap_dance_actions[] = {
-	[TD_C] = ACTION_TAP_DANCE_TAP_HOLD(KC_C, KC_D),
-	[TD_S] = ACTION_TAP_DANCE_TAP_HOLD(KC_S, KC_F),
-	[TD_Z] = ACTION_TAP_DANCE_TAP_HOLD(KC_Z, KC_G),
+	[TD_C] = ACTION_TAP_DANCE_TAP_HOLD(KC_C),
+	[TD_S] = ACTION_TAP_DANCE_TAP_HOLD(KC_S),
+	[TD_Z] = ACTION_TAP_DANCE_TAP_HOLD(KC_Z),
 };
 
 // Simpler variant for double taps; doesn't require any of the functions below
@@ -94,21 +92,21 @@ void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data) {
 			&& !state->interrupted
 #endif
 		) {
-			register_code16(tap_hold->hold);
-			tap_hold->held = tap_hold->hold;
+            bool is_shift = get_mods() == MOD_BIT(KC_LSFT);
+            switch (tap_hold->hold) {
+                case KC_C:
+                    send_unicode_string(is_shift ? "Č" : "č");
+                    break;
+                case KC_S:
+                    send_unicode_string(is_shift ? "Š" : "š");
+                    break;
+                case KC_Z:
+                    send_unicode_string(is_shift ? "Ž" : "ž");
+                    break;
+            }
 		} else {
 			register_code16(tap_hold->tap);
-			tap_hold->held = tap_hold->tap;
 		}
-	}
-}
-
-void tap_dance_tap_hold_reset(tap_dance_state_t *state, void *user_data) {
-	tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)user_data;
-
-	if (tap_hold->held) {
-		unregister_code16(tap_hold->held);
-		tap_hold->held = 0;
 	}
 }
 
