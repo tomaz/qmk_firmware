@@ -48,11 +48,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // ┌───────┬───────┬───────┬───────┬───────┬───────┐							   ┌───────┬───────┬───────┬───────┬───────┬───────┐
 	_______,KC_F1,	KC_F2,	KC_F3,	KC_F4,	KC_F5,									KC_F6,	KC_F7,	KC_F8,	KC_F9,	KC_F10,	KC_F11,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,_______,PL_HOME,KC_UP,	PL_END,	_______,								_______,_______,_______,_______,_______,KC_F12,
+	_______,KC_HOME,PL_HOME,KC_UP,	PL_END,	KC_END ,								_______,_______,_______,_______,_______,KC_F12,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤							   ├───────┼───────┼───────┼───────┼───────┼───────┤
 	_______,_______,KC_LEFT,KC_DOWN,KC_RGHT,KC_PGUP,								KC_LCTL,KC_LALT,KC_LGUI,_______,_______,_______,
 // ├───────┼───────┼───────┼───────┼───────┼───────┤─────────────┐	   ┌───────────┼───────┼───────┼───────┼───────┼───────┼───────┤
-	_______,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,_______,
+	_______,KC_LALT,KC_LGUI,_______,_______,KC_PGDN,KC_INS,				KC_DEL,		KC_SPC,	KC_ENT,	_______,_______,_______,KC_BRK,
 // └───────┴───────┴───────┴────────┴──────┴───────┴─────────────┘	   └───────────┴───────┴───────┴───────┴───────┴───────┴───────┘
 //				   ┌───────────────┬───────────────┬───────────────┐   ┌───────────────┬───────────────┬───────────────┐
 					_______,		_______,		PL_LALT,			KC_BSPC,		KC_LBRC,		KC_RBRC
@@ -127,6 +127,10 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 				case LTC(KC_QUOT): case LT2(KC_EQL): case LT2(KC_GRV):
 					rgb_matrix_set_color(index, RGB_DARK_BLUE);
 					break;
+
+                case KC_INS: case KC_BRK:
+                    rgb_matrix_set_color(index, RGB_RED);
+                    break;
 
 				case KC_DEL: case KC_BSPC:
 					rgb_matrix_set_color(index, RGB_MAGENTA);
