@@ -9,6 +9,11 @@
 // https://docs.qmk.fm/features/tap_dance
 // https://docs.qmk.fm/tap_hold
 
+// Comment to disable tap dance code (must also delete TD from rules.mk)
+#define IS_TAP_DANCE_ENABLED
+
+#ifdef IS_TAP_DANCE_ENABLED
+
 // Definitions for simpler layout
 #define TDC TD(TD_C)
 #define TDS TD(TD_S)
@@ -57,20 +62,12 @@ typedef struct {
 // Tap dance handlers
 void td_finished_handler(tap_dance_state_t *state, void *user_data);
 void td_reset_handler(tap_dance_state_t *state, void *user_data);
-void td_process(tap_dance_state_t *state, void *user_data);
 
 // Macro for creating each tap dance key
 #define ACTION_TAP_DANCE_STATE_FN(kc, uc, ucs) { \
-	.fn = {NULL, td_process, NULL, NULL}, \
-	.user_data = (void *)&((td_data_t){false, TD_NONE, kc, uc, ucs}) \
-}
-//{
-    /*
-    \
 	.fn = {NULL, td_finished_handler, td_reset_handler, NULL}, \
 	.user_data = (void *)&((td_data_t){false, TD_NONE, kc, uc, ucs}) \
 }
-    */
 
 // Setup all tap dance actions
 tap_dance_action_t tap_dance_actions[] = {
@@ -115,19 +112,12 @@ bool td_is_shift_pressed(void) {
     return false;
 }
 
-void td_process(tap_dance_state_t *state, void *user_data) {
-    if (state->count == 3) {
-        td_data_t *data = (td_data_t *)user_data;
-        bool is_shift = td_is_shift_pressed();
-        send_unicode_string(is_shift ? data->uc_shift : data->uc);
-    }
-}
-
 void td_handle(td_data_t *data, td_fn_state_t state) {
     switch (state) {
         case TD_FN_FINISHED: {
             switch (data->state) {
                 case TD_SINGLE_TAP: register_code(data->kc); break;
+                case TD_SINGLE_HOLD: register_code(data->kc); break;
                 case TD_TRIPLE_TAP: send_unicode_string(data->is_shift ? data->uc_shift : data->uc); break;
                 default: break;
             }
@@ -160,6 +150,33 @@ void td_reset_handler(tap_dance_state_t *state, void *user_data) {
     data->state = td_determine_state(state);
     td_handle(data, TD_FN_RESET);
 }
+
+// Overrides
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    // This is to emit taps as soon as possible - on release of the TD key; have to use this function as there's no tap dance override for it.
+	td_data_t *action;
+
+	switch (keycode) {
+		case TDC:
+		case TDS:
+		case TDZ:
+			action = &tap_dance_actions[QK_TAP_DANCE_GET_INDEX(keycode)];
+			if (!record->event.pressed && action->state.count && !action->state.finished) {
+                td_data_t *data = (td_data_t *)action->user_data;
+				tap_code16(data->kc);
+			}
+			break;
+	}
+
+	return true;
+}
+
+#else
+#   define TDC KC_C
+#   define TDS KC_S
+#   define TDZ KC_Z
+#endif
 
 /*
 // Data for each tap dance
@@ -333,7 +350,9 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 				case KC_A: case KC_B: case KC_C: case KC_D: case KC_E: case KC_F: case KC_G: case KC_H: case KC_I: case KC_J:
 				case KC_K: case KC_L: case KC_M: case KC_N: case KC_O: case KC_P: case KC_Q: case KC_R: case KC_S: case KC_T:
 				case KC_U: case KC_V: case KC_W: case KC_X: case KC_Y: case KC_Z:
+            #ifdef IS_TD_ON
 				case TDC: case TDS: case TDZ:
+            #endif
 					rgb_matrix_set_color(index, RGB_RED);
 					break;
 
