@@ -4,6 +4,9 @@
 #include QMK_KEYBOARD_H
 #include "keymap_extras/keymap_slovenian.h"
 
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// COMMON DEFINITIONS
+
 #define LAYER_QWERTY 0
 #define LAYER_CURSORS 1
 #define LAYER_MOUSE 2
@@ -24,9 +27,15 @@
 #	define PL_END	KC_END
 #endif
 
-// TAP DANCE BEGIN
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-// https://docs.qmk.fm/features/tap_danc
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// TAP DANCE
+
+// https://docs.qmk.fm/features/tap_dance
+// https://docs.qmk.fm/tap_hold
+
+// TD keys
 
 #define TDC TD(TD_C)
 #define TDS TD(TD_S)
@@ -38,43 +47,76 @@ enum {
 	TD_Z
 };
 
+// TD data & functions
+
 typedef struct {
 	uint16_t tap;
-	uint16_t hold;
-} tap_dance_tap_hold_t;
+    const char *hold;
+    const char *hold_shift;
+} td_data_t;
 
-bool process_record_user(uint16_t keycode, keyrecord_t *record);
-void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data);
+void td_finished(tap_dance_state_t *state, void *user_data);
 
-#define ACTION_TAP_DANCE_TAP_HOLD(tap) \
+// TD macros
+
+#define ACTION_TAP_DANCE_TAP_HOLD(tap,holds,hold) \
 	{ \
-		.fn        = { NULL, tap_dance_tap_hold_finished, NULL }, \
-		.user_data = (void *)&((tap_dance_tap_hold_t){ tap, tap }), \
+		.fn        = { NULL, td_finished, NULL }, \
+		.user_data = (void *)&((td_data_t){ tap, hold, holds }), \
 	}
 
+// All TD keys
+
 tap_dance_action_t tap_dance_actions[] = {
-	[TD_C] = ACTION_TAP_DANCE_TAP_HOLD(KC_C),
-	[TD_S] = ACTION_TAP_DANCE_TAP_HOLD(KC_S),
-	[TD_Z] = ACTION_TAP_DANCE_TAP_HOLD(KC_Z),
+	[TD_C] = ACTION_TAP_DANCE_TAP_HOLD(KC_C, "Č" , "č"),
+	[TD_S] = ACTION_TAP_DANCE_TAP_HOLD(KC_S, "Š" , "š"),
+	[TD_Z] = ACTION_TAP_DANCE_TAP_HOLD(KC_Z, "Ž" , "ž"),
 };
 
-// Simpler variant for double taps; doesn't require any of the functions below
-// tap_dance_action_t tap_dance_actions[] = {
-// 	[TD_C] = ACTION_TAP_DANCE_DOUBLE(KC_C, SI_CCAR),
-// 	[TD_S] = ACTION_TAP_DANCE_DOUBLE(KC_S, SI_SCAR),
-// 	[TD_Z] = ACTION_TAP_DANCE_DOUBLE(KC_Z, SI_ZCAR)
-// };
+// TD implementation
+
+bool td_is_hold_action(tap_dance_state_t *state) {
+	return
+	   state->count == 1
+#ifndef PERMISSIVE_HOLD
+		&& !state->interrupted
+#endif
+	;
+}
+
+bool is_shift_pressed(void) {
+	uint8_t mods = get_mods();
+	if (mods == MOD_BIT(KC_LSFT)) return true;
+	if (mods == MOD_BIT(KC_RSFT)) return true;
+	return false;
+}
+
+void td_finished(tap_dance_state_t *state, void *user_data) {
+	td_data_t *data = (td_data_t *)user_data;
+
+	if (state->pressed) {
+		if (td_is_hold_action(state)) {
+			bool is_shift = is_shift_pressed();
+            send_unicode_string(is_shift ? data->hold_shift : data->hold);
+		} else {
+			register_code16(data->tap);
+		}
+	}
+}
+
+// System overrides
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+	// This is so that we can act as soon as possible, without waiting for end of tap dance
 	tap_dance_action_t *action;
 
 	switch (keycode) {
-		case TD(TD_C):
-		case TD(TD_S):
-		case TD(TD_Z):
+		case TDC:
+		case TDS:
+		case TDZ:
 			action = &tap_dance_actions[QK_TAP_DANCE_GET_INDEX(keycode)];
 			if (!record->event.pressed && action->state.count && !action->state.finished) {
-				tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)action->user_data;
+				td_data_t *tap_hold = (td_data_t *)action->user_data;
 				tap_code16(tap_hold->tap);
 			}
 			break;
@@ -83,34 +125,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	return true;
 }
 
-void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data) {
-	tap_dance_tap_hold_t *tap_hold = (tap_dance_tap_hold_t *)user_data;
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-	if (state->pressed) {
-		if (state->count == 1
-#ifndef PERMISSIVE_HOLD
-			&& !state->interrupted
-#endif
-		) {
-            bool is_shift = get_mods() == MOD_BIT(KC_LSFT);
-            switch (tap_hold->hold) {
-                case KC_C:
-                    send_unicode_string(is_shift ? "Č" : "č");
-                    break;
-                case KC_S:
-                    send_unicode_string(is_shift ? "Š" : "š");
-                    break;
-                case KC_Z:
-                    send_unicode_string(is_shift ? "Ž" : "ž");
-                    break;
-            }
-		} else {
-			register_code16(tap_hold->tap);
-		}
-	}
-}
-
-// TAP DANCE END
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// LAYERS
 
 // Momentary layer switch
 #define LTC(key) LT(LAYER_CURSORS, key)
@@ -142,6 +160,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 								_______,_______,        _______,        KC_BSPC,    KC_P0,_______
 	)
 };
+
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// COLORS
 
 #define RGB_DARK_BLUE       0x00, 0x39, 0x88
 #define RGB_DARK_PURPLE     0x88, 0x00, 0x52
@@ -272,52 +295,4 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 	return false;
 }
 
-/*
-#if defined(ENCODER_ENABLE) && defined(ENCODER_MAP_ENABLE)
-const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
-
-};
-#endif
-*/
-
-/*
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-  switch (keycode) {
-	case QWERTY:
-	  if (record->event.pressed) {
-		set_single_persistent_default_layer(LAYER_QUERTY);
-	  }
-	  return false;
-	  break;
-	case LOWER:
-	  if (record->event.pressed) {
-		layer_on(_LOWER);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  } else {
-		layer_off(_LOWER);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  }
-	  return false;
-	  break;
-	case RAISE:
-	  if (record->event.pressed) {
-		layer_on(_RAISE);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  } else {
-		layer_off(_RAISE);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  }
-	  return false;
-	  break;
-	case ADJUST:
-	  if (record->event.pressed) {
-		layer_on(_ADJUST);
-	  } else {
-		layer_off(_ADJUST);
-	  }
-	  return false;
-	  break;
-  }
-  return true;
-}
-*/
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
