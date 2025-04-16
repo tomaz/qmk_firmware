@@ -4,40 +4,165 @@
 #include QMK_KEYBOARD_H
 #include "keymap_extras/keymap_slovenian.h"
 
-#define LAYER_QWERTY 0
-#define LAYER_CURSORS 1
-#define LAYER_MOUSE 2
+// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// TAP DANCE
+// https://docs.qmk.fm/features/tap_dance
+// https://docs.qmk.fm/tap_hold
 
-#define IS_MAC
-
-#ifdef IS_MAC
-#	define PL_LGUI	KC_LALT		// on Mac ALT = CMD
-#   define PL_RGUI  KC_RALT
-#	define PL_LALT	KC_LGUI		// on Mac CMD = ALT
-#   define PL_RALT  KC_RGUI
-#	define PL_HOME	LGUI(KC_LEFT)
-#	define PL_END	LGUI(KC_RGHT)
-#else
-#	define PL_LGUI	KC_LGUI
-#	define PL_LALT	KC_LALT
-#	define PL_HOME	KC_HOME
-#	define PL_END	KC_END
-#endif
-
-// TAP DANCE BEGIN
-
-// https://docs.qmk.fm/features/tap_danc
-
+// Definitions for simpler layout
 #define TDC TD(TD_C)
 #define TDS TD(TD_S)
 #define TDZ TD(TD_Z)
 
+// All tap dances
 enum {
 	TD_C,
 	TD_S,
 	TD_Z
 };
 
+// Tap dance states
+typedef enum {
+	TD_NONE,
+
+	TD_SINGLE_TAP,
+	TD_SINGLE_HOLD,
+
+	TD_DOUBLE_TAP,
+	TD_DOUBLE_HOLD,
+	TD_DOUBLE_SINGLE_TAP,	// Send 2 single taps
+
+	TD_TRIPLE_TAP,
+	TD_TRIPLE_HOLD,
+	TD_TRIPLE_SINGLE_TAP,	// Send 3 single taps
+} td_state_t;
+
+typedef enum {
+	TD_FN_FINISHED,
+	TD_FN_RESET
+} td_fn_state_t;
+
+// Tap dance state handler function.
+typedef void (*td_state_fn_t)(td_state_t state, td_fn_state_t fn_state);
+
+// Tap dance data for each td.
+typedef struct {
+	td_state_t state;
+    bool is_shift;
+    uint16_t kc;
+    const char *uc;
+    const char *uc_shift;
+} td_data_t;
+
+// Tap dance handlers
+void td_finished_handler(tap_dance_state_t *state, void *user_data);
+void td_reset_handler(tap_dance_state_t *state, void *user_data);
+void td_process(tap_dance_state_t *state, void *user_data);
+
+// Macro for creating each tap dance key
+#define ACTION_TAP_DANCE_STATE_FN(kc, uc, ucs) { \
+	.fn = {NULL, td_process, NULL, NULL}, \
+	.user_data = (void *)&((td_data_t){false, TD_NONE, kc, uc, ucs}) \
+}
+//{
+    /*
+    \
+	.fn = {NULL, td_finished_handler, td_reset_handler, NULL}, \
+	.user_data = (void *)&((td_data_t){false, TD_NONE, kc, uc, ucs}) \
+}
+    */
+
+// Setup all tap dance actions
+tap_dance_action_t tap_dance_actions[] = {
+	[TD_C] = ACTION_TAP_DANCE_STATE_FN(KC_C, "č", "Č"),
+	[TD_S] = ACTION_TAP_DANCE_STATE_FN(KC_S, "š", "Š"),
+	[TD_Z] = ACTION_TAP_DANCE_STATE_FN(KC_Z, "ž", "Ž")
+};
+
+// Helpers
+
+td_state_t td_determine_state(tap_dance_state_t *state) {
+	if (state->count == 1) {
+		if (state->interrupted || !state->pressed) {
+			return TD_SINGLE_TAP;
+		} else {
+			return TD_SINGLE_HOLD;
+		}
+	} else if (state->count == 2) {
+		if (state->interrupted) {
+			return TD_DOUBLE_SINGLE_TAP;
+		} else if (state->pressed) {
+			return TD_DOUBLE_HOLD;
+		} else {
+			return TD_DOUBLE_TAP;
+		}
+	} else if (state->count == 3) {
+		if (state->interrupted) {
+			return TD_TRIPLE_SINGLE_TAP;
+		} else if (state->pressed) {
+			return TD_TRIPLE_TAP;
+		} else {
+			return TD_TRIPLE_HOLD;
+		}
+	} else {
+		return TD_NONE;
+	}
+}
+
+bool td_is_shift_pressed(void) {
+    if (get_mods() == MOD_BIT(KC_LSFT)) return true;
+    if (get_mods() == MOD_BIT(KC_RSFT)) return true;
+    return false;
+}
+
+void td_process(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 3) {
+        td_data_t *data = (td_data_t *)user_data;
+        bool is_shift = td_is_shift_pressed();
+        send_unicode_string(is_shift ? data->uc_shift : data->uc);
+    }
+}
+
+void td_handle(td_data_t *data, td_fn_state_t state) {
+    switch (state) {
+        case TD_FN_FINISHED: {
+            switch (data->state) {
+                case TD_SINGLE_TAP: register_code(data->kc); break;
+                case TD_TRIPLE_TAP: send_unicode_string(data->is_shift ? data->uc_shift : data->uc); break;
+                default: break;
+            }
+            break;
+        }
+        case TD_FN_RESET: {
+            switch (data->state) {
+                case TD_SINGLE_TAP: unregister_code(data->kc); break;
+                default: break;
+            }
+        }
+        default: {
+            break;
+        }
+    }
+}
+
+// Tap dance handlers
+
+void td_finished_handler(tap_dance_state_t *state, void *user_data) {
+    td_data_t *data = (td_data_t *)user_data;
+    data->is_shift = td_is_shift_pressed();
+    data->state = td_determine_state(state);
+    td_handle(data, TD_FN_FINISHED);
+}
+
+void td_reset_handler(tap_dance_state_t *state, void *user_data) {
+    td_data_t *data = (td_data_t *)user_data;
+    data->is_shift = td_is_shift_pressed();
+    data->state = td_determine_state(state);
+    td_handle(data, TD_FN_RESET);
+}
+
+/*
+// Data for each tap dance
 typedef struct {
 	uint16_t tap;
 	uint16_t hold;
@@ -57,13 +182,6 @@ tap_dance_action_t tap_dance_actions[] = {
 	[TD_S] = ACTION_TAP_DANCE_TAP_HOLD(KC_S),
 	[TD_Z] = ACTION_TAP_DANCE_TAP_HOLD(KC_Z),
 };
-
-// Simpler variant for double taps; doesn't require any of the functions below
-// tap_dance_action_t tap_dance_actions[] = {
-// 	[TD_C] = ACTION_TAP_DANCE_DOUBLE(KC_C, SI_CCAR),
-// 	[TD_S] = ACTION_TAP_DANCE_DOUBLE(KC_S, SI_SCAR),
-// 	[TD_Z] = ACTION_TAP_DANCE_DOUBLE(KC_Z, SI_ZCAR)
-// };
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	tap_dance_action_t *action;
@@ -92,25 +210,48 @@ void tap_dance_tap_hold_finished(tap_dance_state_t *state, void *user_data) {
 			&& !state->interrupted
 #endif
 		) {
-            bool is_shift = get_mods() == MOD_BIT(KC_LSFT);
-            switch (tap_hold->hold) {
-                case KC_C:
-                    send_unicode_string(is_shift ? "Č" : "č");
-                    break;
-                case KC_S:
-                    send_unicode_string(is_shift ? "Š" : "š");
-                    break;
-                case KC_Z:
-                    send_unicode_string(is_shift ? "Ž" : "ž");
-                    break;
-            }
+			bool is_shift = get_mods() == MOD_BIT(KC_LSFT);
+			switch (tap_hold->hold) {
+				case KC_C:
+					send_unicode_string(is_shift ? "Č" : "č");
+					break;
+				case KC_S:
+					send_unicode_string(is_shift ? "Š" : "š");
+					break;
+				case KC_Z:
+					send_unicode_string(is_shift ? "Ž" : "ž");
+					break;
+			}
 		} else {
 			register_code16(tap_hold->tap);
 		}
 	}
 }
+*/
 
-// TAP DANCE END
+// TAP DANCE
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// LAYOUT DEFINITION
+
+#define LAYER_QWERTY 0
+#define LAYER_CURSORS 1
+#define LAYER_MOUSE 2
+
+#ifdef IS_MAC
+#	define PL_LGUI	KC_LALT		// on Mac ALT = CMD
+#   define PL_RGUI  KC_RALT
+#	define PL_LALT	KC_LGUI		// on Mac CMD = ALT
+#   define PL_RALT  KC_RGUI
+#	define PL_HOME	LGUI(KC_LEFT)
+#	define PL_END	LGUI(KC_RGHT)
+#else
+#	define PL_LGUI	KC_LGUI
+#	define PL_LALT	KC_LALT
+#	define PL_HOME	KC_HOME
+#	define PL_END	KC_END
+#endif
 
 // Momentary layer switch
 #define LTC(key) LT(LAYER_CURSORS, key)
@@ -142,6 +283,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 								_______,_______,        _______,        KC_BSPC,    KC_P0,_______
 	)
 };
+
+// LAYOUT DEFINITION
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+// COLORS
 
 #define RGB_DARK_BLUE       0x00, 0x39, 0x88
 #define RGB_DARK_PURPLE     0x88, 0x00, 0x52
@@ -272,52 +419,5 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 	return false;
 }
 
-/*
-#if defined(ENCODER_ENABLE) && defined(ENCODER_MAP_ENABLE)
-const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
-
-};
-#endif
-*/
-
-/*
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-  switch (keycode) {
-	case QWERTY:
-	  if (record->event.pressed) {
-		set_single_persistent_default_layer(LAYER_QUERTY);
-	  }
-	  return false;
-	  break;
-	case LOWER:
-	  if (record->event.pressed) {
-		layer_on(_LOWER);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  } else {
-		layer_off(_LOWER);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  }
-	  return false;
-	  break;
-	case RAISE:
-	  if (record->event.pressed) {
-		layer_on(_RAISE);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  } else {
-		layer_off(_RAISE);
-		update_tri_layer(_LOWER, _RAISE, _ADJUST);
-	  }
-	  return false;
-	  break;
-	case ADJUST:
-	  if (record->event.pressed) {
-		layer_on(_ADJUST);
-	  } else {
-		layer_off(_ADJUST);
-	  }
-	  return false;
-	  break;
-  }
-  return true;
-}
-*/
+// COLORS
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

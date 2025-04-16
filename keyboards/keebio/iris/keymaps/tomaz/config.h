@@ -17,9 +17,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+// Comment for windows implementation
+#define IS_MAC
+
 #define SPLIT_LAYER_STATE_ENABLE
 #define SPLIT_LED_STATE_ENABLE
 
+// How fast tap action should end for next tap to be considered double tap
+// See examples on https://docs.qmk.fm/tap_hold
+#define TAPPING_TERM 175
+
+// How fast mouse movement changes to maximum speed
 #define MOUSEKEY_TIME_TO_MAX 100
 
-#define UNICODE_SELECTED_MODES UNICODE_MODE_MACOS
+#ifdef IS_MAC
+#   define UNICODE_SELECTED_MODES UNICODE_MODE_MACOS
+#else
+#   define UNICODE_SELECTED_MODES UNICODE_MODE_WINDOWS
+#endif
